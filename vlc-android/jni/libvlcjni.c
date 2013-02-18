@@ -245,6 +245,7 @@ void Java_org_videolan_libvlc_LibVLC_nativeInit(JNIEnv *env, jobject thiz)
         "--no-video-title-show",
         "--no-stats",
         "--no-plugins-cache",
+        "--sout=#transcode{acodec=a,vcodec=b}:dummy",
         "--no-drop-late-frames",
         /* The VLC default is to pick the highest resolution possible
          * (i.e. 1080p). For mobile, pick a more sane default for slow
