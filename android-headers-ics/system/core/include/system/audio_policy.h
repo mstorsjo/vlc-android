@@ -30,14 +30,6 @@ __BEGIN_DECLS
  * frameworks/base/include/media/AudioSystem.h
  */
 
-/* request to open a direct output with get_output() (by opposition to
- * sharing an output with other AudioTracks)
- */
-typedef enum {
-    AUDIO_POLICY_OUTPUT_FLAG_INDIRECT = 0x0,
-    AUDIO_POLICY_OUTPUT_FLAG_DIRECT = 0x1
-} audio_policy_output_flags_t;
-
 /* device categories used for audio_policy->set_force_use() */
 typedef enum {
     AUDIO_POLICY_FORCE_NONE,
@@ -50,6 +42,7 @@ typedef enum {
     AUDIO_POLICY_FORCE_BT_DESK_DOCK,
     AUDIO_POLICY_FORCE_ANALOG_DOCK,
     AUDIO_POLICY_FORCE_DIGITAL_DOCK,
+    AUDIO_POLICY_FORCE_NO_BT_A2DP, /* A2DP sink is not preferred to speaker or wired HS */
 
     AUDIO_POLICY_FORCE_CFG_CNT,
     AUDIO_POLICY_FORCE_CFG_MAX = AUDIO_POLICY_FORCE_CFG_CNT - 1,

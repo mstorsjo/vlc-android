@@ -250,7 +250,9 @@ typedef enum {
                                AUDIO_CHANNEL_IN_Z_AXIS |
                                AUDIO_CHANNEL_IN_VOICE_UPLINK |
                                AUDIO_CHANNEL_IN_VOICE_DNLINK),
-} audio_channels_t;
+};
+
+typedef uint32_t audio_channel_mask_t;
 
 typedef enum {
     AUDIO_MODE_INVALID          = -2,
@@ -288,6 +290,8 @@ typedef enum {
     AUDIO_DEVICE_OUT_AUX_DIGITAL               = 0x400,
     AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET         = 0x800,
     AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET         = 0x1000,
+    AUDIO_DEVICE_OUT_USB_ACCESSORY             = 0x2000,
+    AUDIO_DEVICE_OUT_USB_DEVICE                = 0x4000,
     AUDIO_DEVICE_OUT_DEFAULT                   = 0x8000,
     AUDIO_DEVICE_OUT_ALL      = (AUDIO_DEVICE_OUT_EARPIECE |
                                  AUDIO_DEVICE_OUT_SPEAKER |
@@ -302,6 +306,8 @@ typedef enum {
                                  AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                  AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET |
                                  AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET |
+                                 AUDIO_DEVICE_OUT_USB_ACCESSORY |
+                                 AUDIO_DEVICE_OUT_USB_DEVICE |
                                  AUDIO_DEVICE_OUT_DEFAULT),
     AUDIO_DEVICE_OUT_ALL_A2DP = (AUDIO_DEVICE_OUT_BLUETOOTH_A2DP |
                                  AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES |
@@ -309,6 +315,8 @@ typedef enum {
     AUDIO_DEVICE_OUT_ALL_SCO  = (AUDIO_DEVICE_OUT_BLUETOOTH_SCO |
                                  AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET |
                                  AUDIO_DEVICE_OUT_BLUETOOTH_SCO_CARKIT),
+    AUDIO_DEVICE_OUT_ALL_USB  = (AUDIO_DEVICE_OUT_USB_ACCESSORY |
+                                 AUDIO_DEVICE_OUT_USB_DEVICE),
 
     /* input devices */
     AUDIO_DEVICE_IN_COMMUNICATION         = 0x10000,
@@ -332,6 +340,29 @@ typedef enum {
                                AUDIO_DEVICE_IN_DEFAULT),
     AUDIO_DEVICE_IN_ALL_SCO = AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET,
 } audio_devices_t;
+
+/* the audio output flags serve two purposes:
+ * - when an AudioTrack is created they indicate a "wish" to be connected to an
+ * output stream with attributes corresponding to the specified flags
+ * - when present in an output profile descriptor listed for a particular audio
+ * hardware module, they indicate that an output stream can be opened that
+ * supports the attributes indicated by the flags.
+ * the audio policy manager will try to match the flags in the request
+ * (when getOuput() is called) to an available output stream.
+ */
+typedef enum {
+    AUDIO_OUTPUT_FLAG_NONE = 0x0,       // no attributes
+    AUDIO_OUTPUT_FLAG_DIRECT = 0x1,     // this output directly connects a track
+                                        // to one output stream: no software mixer
+    AUDIO_OUTPUT_FLAG_PRIMARY = 0x2,    // this output is the primary output of
+                                        // the device. It is unique and must be
+                                        // present. It is opened by default and
+                                        // receives routing, audio mode and volume
+                                        // controls related to voice calls.
+    AUDIO_OUTPUT_FLAG_FAST = 0x4,       // output supports "fast tracks",
+                                        // defined elsewhere
+    AUDIO_OUTPUT_FLAG_DEEP_BUFFER = 0x8 // use deep audio buffers
+} audio_output_flags_t;
 
 static inline bool audio_is_output_device(audio_devices_t device)
 {
@@ -366,6 +397,14 @@ static inline bool audio_is_bluetooth_sco_device(audio_devices_t device)
         return false;
 }
 
+static inline bool audio_is_usb_device(audio_devices_t device)
+{
+    if ((popcount(device) == 1) && (device & AUDIO_DEVICE_OUT_ALL_USB))
+        return true;
+    else
+        return false;
+}
+
 static inline bool audio_is_input_channel(uint32_t channel)
 {
     if ((channel & ~AUDIO_CHANNEL_IN_ALL) == 0)
@@ -382,7 +421,52 @@ static inline bool audio_is_output_channel(uint32_t channel)
         return false;
 }
 
-static inline bool audio_is_valid_format(uint32_t format)
+/* Derive an output channel mask from a channel count.
+ * This is to be used when the content channel mask is unknown. The 1, 2, 4, 5, 6, 7 and 8 channel
+ * cases are mapped to the standard game/home-theater layouts, but note that 4 is mapped to quad,
+ * and not stereo + FC + mono surround. A channel count of 3 is arbitrarily mapped to stereo + FC
+ * for continuity with stereo.
+ * Returns the matching channel mask, or 0 if the number of channels exceeds that of the
+ * configurations for which a default channel mask is defined.
+ */
+static inline audio_channel_mask_t audio_channel_out_mask_from_count(uint32_t channel_count)
+{
+    switch(channel_count) {
+    case 1:
+        return AUDIO_CHANNEL_OUT_MONO;
+    case 2:
+        return AUDIO_CHANNEL_OUT_STEREO;
+    case 3:
+        return (AUDIO_CHANNEL_OUT_STEREO | AUDIO_CHANNEL_OUT_FRONT_CENTER);
+    case 4: // 4.0
+        return AUDIO_CHANNEL_OUT_QUAD;
+    case 5: // 5.0
+        return (AUDIO_CHANNEL_OUT_QUAD | AUDIO_CHANNEL_OUT_FRONT_CENTER);
+    case 6: // 5.1
+        return AUDIO_CHANNEL_OUT_5POINT1;
+    case 7: // 6.1
+        return (AUDIO_CHANNEL_OUT_5POINT1 | AUDIO_CHANNEL_OUT_BACK_CENTER);
+    case 8:
+        return AUDIO_CHANNEL_OUT_7POINT1;
+    default:
+        return 0;
+    }
+}
+
+/* Similar to above, but for input.  Currently handles only mono and stereo. */
+static inline audio_channel_mask_t audio_channel_in_mask_from_count(uint32_t channel_count)
+{
+    switch (channel_count) {
+    case 1:
+        return AUDIO_CHANNEL_IN_MONO;
+    case 2:
+        return AUDIO_CHANNEL_IN_STEREO;
+    default:
+        return 0;
+    }
+}
+
+static inline bool audio_is_valid_format(audio_format_t format)
 {
     switch (format & AUDIO_FORMAT_MAIN_MASK) {
     case AUDIO_FORMAT_PCM:
@@ -403,28 +487,28 @@ static inline bool audio_is_valid_format(uint32_t format)
     }
 }
 
-static inline bool audio_is_linear_pcm(uint32_t format)
+static inline bool audio_is_linear_pcm(audio_format_t format)
 {
     return ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_PCM);
 }
 
-static inline size_t audio_bytes_per_sample(uint32_t format)
+static inline size_t audio_bytes_per_sample(audio_format_t format)
 {
     size_t size = 0;
 
     switch (format) {
-        case AUDIO_FORMAT_PCM_32_BIT:
-        case AUDIO_FORMAT_PCM_8_24_BIT:
-            size = sizeof(int32_t);
-            break;
-        case AUDIO_FORMAT_PCM_16_BIT:
-            size = sizeof(int16_t);
-            break;
-        case AUDIO_FORMAT_PCM_8_BIT:
-            size = sizeof(uint8_t);
-            break;
-        default:
-            break;
+    case AUDIO_FORMAT_PCM_32_BIT:
+    case AUDIO_FORMAT_PCM_8_24_BIT:
+        size = sizeof(int32_t);
+        break;
+    case AUDIO_FORMAT_PCM_16_BIT:
+        size = sizeof(int16_t);
+        break;
+    case AUDIO_FORMAT_PCM_8_BIT:
+        size = sizeof(uint8_t);
+        break;
+    default:
+        break;
     }
     return size;
 }

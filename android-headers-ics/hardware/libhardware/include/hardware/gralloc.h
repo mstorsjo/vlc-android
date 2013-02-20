@@ -258,4 +258,4 @@ static inline int gralloc_close(struct alloc_device_t* device) {
 
 __END_DECLS
 
-#endif  // ANDROID_ALLOC_INTERFACE_H
+#endif  // ANDROID_GRALLOC_INTERFACE_H

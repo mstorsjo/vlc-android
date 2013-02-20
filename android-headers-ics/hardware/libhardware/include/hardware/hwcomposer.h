@@ -24,11 +24,16 @@
 #include <hardware/hardware.h>
 #include <cutils/native_handle.h>
 
+#include <hardware/hwcomposer_defs.h>
+
 __BEGIN_DECLS
 
 /*****************************************************************************/
 
-#define HWC_API_VERSION 1
+// for compatibility
+#define HWC_MODULE_API_VERSION      HWC_MODULE_API_VERSION_0_1
+#define HWC_DEVICE_API_VERSION      HWC_DEVICE_API_VERSION_0_1
+#define HWC_API_VERSION             HWC_DEVICE_API_VERSION
 
 /**
  * The id of this module
@@ -41,87 +46,39 @@ __BEGIN_DECLS
 #define HWC_HARDWARE_COMPOSER   "composer"
 
 
-enum {
-    /* hwc_composer_device_t::set failed in EGL */
-    HWC_EGL_ERROR = -1
-};
+struct hwc_composer_device;
 
 /*
- * hwc_layer_t::hints values
- * Hints are set by the HAL and read by SurfaceFlinger
+ * availability: HWC_DEVICE_API_VERSION_0_3
+ *
+ * struct hwc_methods cannot be embedded in other structures as
+ * sizeof(struct hwc_methods) cannot be relied upon.
+ *
  */
-enum {
-    /*
-     * HWC can set the HWC_HINT_TRIPLE_BUFFER hint to indicate to SurfaceFlinger
-     * that it should triple buffer this layer. Typically HWC does this when
-     * the layer will be unavailable for use for an extended period of time,
-     * e.g. if the display will be fetching data directly from the layer and
-     * the layer can not be modified until after the next set().
-     */
-    HWC_HINT_TRIPLE_BUFFER  = 0x00000001,
+typedef struct hwc_methods {
+
+    /*************************************************************************
+     * HWC_DEVICE_API_VERSION_0_3
+     *************************************************************************/
 
     /*
-     * HWC sets HWC_HINT_CLEAR_FB to tell SurfaceFlinger that it should clear the
-     * framebuffer with transparent pixels where this layer would be.
-     * SurfaceFlinger will only honor this flag when the layer has no blending
+     * eventControl(..., event, enabled)
+     * Enables or disables h/w composer events.
      *
+     * eventControl can be called from any thread and takes effect
+     * immediately.
+     *
+     *  Supported events are:
+     *      HWC_EVENT_VSYNC
+     *
+     * returns -EINVAL if the "event" parameter is not one of the value above
+     * or if the "enabled" parameter is not 0 or 1.
      */
-    HWC_HINT_CLEAR_FB       = 0x00000002
-};
 
-/*
- * hwc_layer_t::flags values
- * Flags are set by SurfaceFlinger and read by the HAL
- */
-enum {
-    /*
-     * HWC_SKIP_LAYER is set by SurfaceFlnger to indicate that the HAL
-     * shall not consider this layer for composition as it will be handled
-     * by SurfaceFlinger (just as if compositionType was set to HWC_OVERLAY).
-     */
-    HWC_SKIP_LAYER = 0x00000001,
-};
+    int (*eventControl)(
+            struct hwc_composer_device* dev, int event, int enabled);
 
-/*
- * hwc_layer_t::compositionType values
- */
-enum {
-    /* this layer is to be drawn into the framebuffer by SurfaceFlinger */
-    HWC_FRAMEBUFFER = 0,
-
-    /* this layer will be handled in the HWC */
-    HWC_OVERLAY = 1,
-};
-
-/*
- * hwc_layer_t::blending values
- */
-enum {
-    /* no blending */
-    HWC_BLENDING_NONE     = 0x0100,
-
-    /* ONE / ONE_MINUS_SRC_ALPHA */
-    HWC_BLENDING_PREMULT  = 0x0105,
-
-    /* SRC_ALPHA / ONE_MINUS_SRC_ALPHA */
-    HWC_BLENDING_COVERAGE = 0x0405
-};
-
-/*
- * hwc_layer_t::transform values
- */
-enum {
-    /* flip source image horizontally */
-    HWC_TRANSFORM_FLIP_H = HAL_TRANSFORM_FLIP_H,
-    /* flip source image vertically */
-    HWC_TRANSFORM_FLIP_V = HAL_TRANSFORM_FLIP_V,
-    /* rotate source image 90 degrees clock-wise */
-    HWC_TRANSFORM_ROT_90 = HAL_TRANSFORM_ROT_90,
-    /* rotate source image 180 degrees */
-    HWC_TRANSFORM_ROT_180 = HAL_TRANSFORM_ROT_180,
-    /* rotate source image 270 degrees clock-wise */
-    HWC_TRANSFORM_ROT_270 = HAL_TRANSFORM_ROT_270,
-};
+} hwc_methods_t;
 
 typedef struct hwc_rect {
     int left;
@@ -135,12 +92,29 @@ typedef struct hwc_region {
     hwc_rect_t const* rects;
 } hwc_region_t;
 
+typedef struct hwc_color {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+} hwc_color_t;
+
 typedef struct hwc_layer {
     /*
-     * initially set to HWC_FRAMEBUFFER, indicates the layer will
-     * be drawn into the framebuffer using OpenGL ES.
-     * The HWC can toggle this value to HWC_OVERLAY, to indicate
-     * it will handle the layer.
+     * initially set to HWC_FRAMEBUFFER or HWC_BACKGROUND.
+     * HWC_FRAMEBUFFER
+     *   indicates the layer will be drawn into the framebuffer
+     *   using OpenGL ES.
+     *   The HWC can toggle this value to HWC_OVERLAY, to indicate
+     *   it will handle the layer.
+     *
+     * HWC_BACKGROUND
+     *   indicates this is a special "background"  layer. The only valid
+     *   field is backgroundColor. HWC_BACKGROUND can only be used with
+     *   HWC_API_VERSION >= 0.2
+     *   The HWC can toggle this value to HWC_FRAMEBUFFER, to indicate
+     *   it CANNOT handle the background color
+     *
      */
     int32_t compositionType;
 
@@ -150,31 +124,42 @@ typedef struct hwc_layer {
     /* see hwc_layer_t::flags above */
     uint32_t flags;
 
-    /* handle of buffer to compose. this handle is guaranteed to have been
-     * allocated with gralloc */
-    buffer_handle_t handle;
+    union {
+        /* color of the background.  hwc_color_t.a is ignored */
+        hwc_color_t backgroundColor;
 
-    /* transformation to apply to the buffer during composition */
-    uint32_t transform;
+        struct {
+            /* handle of buffer to compose. This handle is guaranteed to have been
+             * allocated from gralloc using the GRALLOC_USAGE_HW_COMPOSER usage flag. If
+             * the layer's handle is unchanged across two consecutive prepare calls and
+             * the HWC_GEOMETRY_CHANGED flag is not set for the second call then the
+             * HWComposer implementation may assume that the contents of the buffer have
+             * not changed. */
+            buffer_handle_t handle;
 
-    /* blending to apply during composition */
-    int32_t blending;
+            /* transformation to apply to the buffer during composition */
+            uint32_t transform;
 
-    /* area of the source to consider, the origin is the top-left corner of
-     * the buffer */
-    hwc_rect_t sourceCrop;
+            /* blending to apply during composition */
+            int32_t blending;
 
-    /* where to composite the sourceCrop onto the display. The sourceCrop
-     * is scaled using linear filtering to the displayFrame. The origin is the
-     * top-left corner of the screen.
-     */
-    hwc_rect_t displayFrame;
+            /* area of the source to consider, the origin is the top-left corner of
+             * the buffer */
+            hwc_rect_t sourceCrop;
 
-    /* visible region in screen space. The origin is the
-     * top-left corner of the screen.
-     * The visible region INCLUDES areas overlapped by a translucent layer.
-     */
-    hwc_region_t visibleRegionScreen;
+            /* where to composite the sourceCrop onto the display. The sourceCrop
+             * is scaled using linear filtering to the displayFrame. The origin is the
+             * top-left corner of the screen.
+             */
+            hwc_rect_t displayFrame;
+
+            /* visible region in screen space. The origin is the
+             * top-left corner of the screen.
+             * The visible region INCLUDES areas overlapped by a translucent layer.
+             */
+            hwc_region_t visibleRegionScreen;
+        };
+    };
 } hwc_layer_t;
 
 
@@ -221,6 +206,28 @@ typedef struct hwc_procs {
      * hooks, unless noted otherwise.
      */
     void (*invalidate)(struct hwc_procs* procs);
+
+    /*
+     * (*vsync)() is called by the h/w composer HAL when a vsync event is
+     * received and HWC_EVENT_VSYNC is enabled (see: hwc_event_control).
+     *
+     * the "zero" parameter must always be 0.
+     * the "timestamp" parameter is the system monotonic clock timestamp in
+     *   nanosecond of when the vsync event happened.
+     *
+     * vsync() is GUARANTEED TO NOT CALL BACK into the h/w composer HAL.
+     *
+     * It is expected that vsync() is called from a thread of at least
+     * HAL_PRIORITY_URGENT_DISPLAY with as little latency as possible,
+     * typically less than 0.5 ms.
+     *
+     * It is a (silent) error to have HWC_EVENT_VSYNC enabled when calling
+     * hwc_composer_device.set(..., 0, 0, 0) (screen off). The implementation
+     * can either stop or continue to process VSYNC events, but must not
+     * crash or cause other problems.
+     *
+     */
+    void (*vsync)(struct hwc_procs* procs, int zero, int64_t timestamp);
 } hwc_procs_t;
 
 
@@ -307,14 +314,14 @@ typedef struct hwc_composer_device {
                 hwc_surface_t sur,
                 hwc_layer_list_t* list);
     /*
-     * This hook is OPTIONAL.
+     * This field is OPTIONAL and can be NULL.
      *
      * If non NULL it will be called by SurfaceFlinger on dumpsys
      */
     void (*dump)(struct hwc_composer_device* dev, char *buff, int buff_len);
 
     /*
-     * This hook is OPTIONAL.
+     * This field is OPTIONAL and can be NULL.
      *
      * (*registerProcs)() registers a set of callbacks the h/w composer HAL
      * can later use. It is FORBIDDEN to call any of the callbacks from
@@ -329,7 +336,26 @@ typedef struct hwc_composer_device {
     void (*registerProcs)(struct hwc_composer_device* dev,
             hwc_procs_t const* procs);
 
-    void* reserved_proc[6];
+    /*
+     * This field is OPTIONAL and can be NULL.
+     * availability: HWC_DEVICE_API_VERSION_0_2
+     *
+     * Used to retrieve information about the h/w composer
+     *
+     * Returns 0 on success or -errno on error.
+     */
+    int (*query)(struct hwc_composer_device* dev, int what, int* value);
+
+    /*
+     * Reserved for future use. Must be NULL.
+     */
+    void* reserved_proc[4];
+
+    /*
+     * This field is OPTIONAL and can be NULL.
+     * availability: HWC_DEVICE_API_VERSION_0_3
+     */
+    hwc_methods_t const *methods;
 
 } hwc_composer_device_t;
 

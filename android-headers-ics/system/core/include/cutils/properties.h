@@ -43,13 +43,7 @@ int property_get(const char *key, char *value, const char *default_value);
 /* property_set: returns 0 on success, < 0 on failure
 */
 int property_set(const char *key, const char *value);
-
-/* property_set_sync: returns 0 on success, < 0 on failure
-**
-** symbol needed for Motorola RILs. Calls property_set
-*/
-int property_set_sync(const char *key, const char *value);
-
+    
 int property_list(void (*propfn)(const char *key, const char *value, void *cookie), void *cookie);    
 
 
