@@ -59,7 +59,7 @@ LOCAL_LDLIBS := -L$(VLC_CONTRIB)/lib \
 	$(VLC_BUILD_DIR)/lib/.libs/libvlc.a \
 	$(VLC_BUILD_DIR)/src/.libs/libvlccore.a \
 	$(VLC_BUILD_DIR)/compat/.libs/libcompat.a \
-	-ldl -lz -lm -llog \
+	-ldl -lz -lm -llog -landroid \
 	-ldvbpsi -lebml -lmatroska -ltag \
 	-logg -lFLAC -ltheora \
 	-lmpeg2 -la52 \
