@@ -72,25 +72,25 @@ LOCAL_LDLIBS := -L$(VLC_CONTRIB)/lib \
 include $(BUILD_SHARED_LIBRARY)
 
 
-include $(CLEAR_VARS)
-
-LOCAL_MODULE     := libiomx-gingerbread
-LOCAL_SRC_FILES  := ../$(VLC_SRC_DIR)/modules/codec/omxil/iomx.cpp
-LOCAL_C_INCLUDES := $(VLC_SRC_DIR)/modules/codec/omxil $(ANDROID_SYS_HEADERS_GINGERBREAD)/frameworks/base/include $(ANDROID_SYS_HEADERS_GINGERBREAD)/system/core/include
-LOCAL_CFLAGS     := -Wno-psabi
-LOCAL_LDLIBS     := -L$(ANDROID_LIBS) -lgcc -lstagefright -lmedia -lutils -lbinder
-
-include $(BUILD_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE     := libiomx-hc
-LOCAL_SRC_FILES  := ../$(VLC_SRC_DIR)/modules/codec/omxil/iomx.cpp
-LOCAL_C_INCLUDES := $(VLC_SRC_DIR)/modules/codec/omxil $(ANDROID_SYS_HEADERS_HC)/frameworks/base/include $(ANDROID_SYS_HEADERS_HC)/frameworks/base/native/include $(ANDROID_SYS_HEADERS_HC)/system/core/include $(ANDROID_SYS_HEADERS_HC)/hardware/libhardware/include
-LOCAL_CFLAGS     := -Wno-psabi
-LOCAL_LDLIBS     := -L$(ANDROID_LIBS) -lgcc -lstagefright -lmedia -lutils -lbinder
-
-include $(BUILD_SHARED_LIBRARY)
+#include $(CLEAR_VARS)
+#
+#LOCAL_MODULE     := libiomx-gingerbread
+#LOCAL_SRC_FILES  := ../$(VLC_SRC_DIR)/modules/codec/omxil/iomx.cpp
+#LOCAL_C_INCLUDES := $(VLC_SRC_DIR)/modules/codec/omxil $(ANDROID_SYS_HEADERS_GINGERBREAD)/frameworks/base/include $(ANDROID_SYS_HEADERS_GINGERBREAD)/system/core/include
+#LOCAL_CFLAGS     := -Wno-psabi
+#LOCAL_LDLIBS     := -L$(ANDROID_LIBS) -lgcc -lstagefright -lmedia -lutils -lbinder
+#
+#include $(BUILD_SHARED_LIBRARY)
+#
+#include $(CLEAR_VARS)
+#
+#LOCAL_MODULE     := libiomx-hc
+#LOCAL_SRC_FILES  := ../$(VLC_SRC_DIR)/modules/codec/omxil/iomx.cpp
+#LOCAL_C_INCLUDES := $(VLC_SRC_DIR)/modules/codec/omxil $(ANDROID_SYS_HEADERS_HC)/frameworks/base/include $(ANDROID_SYS_HEADERS_HC)/frameworks/base/native/include $(ANDROID_SYS_HEADERS_HC)/system/core/include $(ANDROID_SYS_HEADERS_HC)/hardware/libhardware/include
+#LOCAL_CFLAGS     := -Wno-psabi
+#LOCAL_LDLIBS     := -L$(ANDROID_LIBS) -lgcc -lstagefright -lmedia -lutils -lbinder
+#
+#include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
