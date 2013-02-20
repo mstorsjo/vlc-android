@@ -17,7 +17,7 @@
 #ifndef _ANDROID_APP_NATIVEACTIVITY_H
 #define _ANDROID_APP_NATIVEACTIVITY_H
 
-#include <ui/InputTransport.h>
+#include <androidfw/InputTransport.h>
 #include <utils/Looper.h>
 
 #include <android/native_activity.h>
@@ -65,7 +65,7 @@ extern void android_NativeActivity_hideSoftInput(
  *      b. Java sends event through default key handler.
  *      c. event is finished.
  */
-struct AInputQueue : public android::InputEventFactoryInterface {
+struct AInputQueue {
 public:
     /* Creates a consumer associated with an input channel. */
     explicit AInputQueue(const android::sp<android::InputChannel>& channel, int workWrite);
@@ -96,16 +96,16 @@ public:
     android::KeyEvent* consumeUnhandledEvent();
     android::KeyEvent* consumePreDispatchingEvent(int* outSeq);
 
-    virtual android::KeyEvent* createKeyEvent();
-    virtual android::MotionEvent* createMotionEvent();
+    android::KeyEvent* createKeyEvent();
 
     int mWorkWrite;
 
 private:
     void doUnhandledKey(android::KeyEvent* keyEvent);
     bool preDispatchKey(android::KeyEvent* keyEvent);
-    void wakeupDispatch();
+    void wakeupDispatchLocked();
 
+    android::PooledInputEventFactory mPooledInputEventFactory;
     android::InputConsumer mConsumer;
     android::sp<android::Looper> mLooper;
 
@@ -114,8 +114,8 @@ private:
 
     struct in_flight_event {
         android::InputEvent* event;
-        int seq;
-        bool doFinish;
+        int seq; // internal sequence number for synthetic pre-dispatch events
+        uint32_t finishSeq; // sequence number for sendFinishedSignal, or 0 if finish not required
     };
 
     struct finish_pre_dispatch {
@@ -126,11 +126,6 @@ private:
     android::Mutex mLock;
 
     int mSeq;
-
-    // Cache of previously allocated key events.
-    android::Vector<android::KeyEvent*> mAvailKeyEvents;
-    // Cache of previously allocated motion events.
-    android::Vector<android::MotionEvent*> mAvailMotionEvents;
 
     // All input events that are actively being processed.
     android::Vector<in_flight_event> mInFlightEvents;

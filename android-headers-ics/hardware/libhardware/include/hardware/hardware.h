@@ -34,6 +34,38 @@ __BEGIN_DECLS
 #define HARDWARE_MODULE_TAG MAKE_TAG_CONSTANT('H', 'W', 'M', 'T')
 #define HARDWARE_DEVICE_TAG MAKE_TAG_CONSTANT('H', 'W', 'D', 'T')
 
+#define HARDWARE_MAKE_API_VERSION(maj,min) \
+            ((((maj) & 0xff) << 8) | ((min) & 0xff))
+
+/*
+ * The current HAL API version.
+ *
+ * All module implementations must set the hw_module_t.hal_api_version field
+ * to this value when declaring the module with HAL_MODULE_INFO_SYM.
+ *
+ * Note that previous implementations have always set this field to 0.
+ * Therefore, libhardware HAL API will always consider versions 0.0 and 1.0
+ * to be 100% binary compatible.
+ *
+ */
+#define HARDWARE_HAL_API_VERSION HARDWARE_MAKE_API_VERSION(1, 0)
+
+/*
+ * Helper macros for module implementors.
+ *
+ * The derived modules should provide convenience macros for supported
+ * versions so that implementations can explicitly specify module/device
+ * versions at definition time.
+ *
+ * Use this macro to set the hw_module_t.module_api_version field.
+ */
+#define HARDWARE_MODULE_API_VERSION(maj,min) HARDWARE_MAKE_API_VERSION(maj,min)
+
+/*
+ * Use this macro to set the hw_device_t.version field
+ */
+#define HARDWARE_DEVICE_API_VERSION(maj,min) HARDWARE_MAKE_API_VERSION(maj,min)
+
 struct hw_module_t;
 struct hw_module_methods_t;
 struct hw_device_t;
@@ -47,11 +79,47 @@ typedef struct hw_module_t {
     /** tag must be initialized to HARDWARE_MODULE_TAG */
     uint32_t tag;
 
-    /** major version number for the module */
-    uint16_t version_major;
+    /**
+     * The API version of the implemented module. The module owner is
+     * responsible for updating the version when a module interface has
+     * changed.
+     *
+     * The derived modules such as gralloc and audio own and manage this field.
+     * The module user must interpret the version field to decide whether or
+     * not to inter-operate with the supplied module implementation.
+     * For example, SurfaceFlinger is responsible for making sure that
+     * it knows how to manage different versions of the gralloc-module API,
+     * and AudioFlinger must know how to do the same for audio-module API.
+     *
+     * The module API version should include a major and a minor component.
+     * For example, version 1.0 could be represented as 0x0100. This format
+     * implies that versions 0x0100-0x01ff are all API-compatible.
+     *
+     * In the future, libhardware will expose a hw_get_module_version()
+     * (or equivalent) function that will take minimum/maximum supported
+     * versions as arguments and would be able to reject modules with
+     * versions outside of the supplied range.
+     */
+    uint16_t module_api_version;
+#define version_major module_api_version
+    /**
+     * version_major/version_minor defines are supplied here for temporary
+     * source code compatibility. They will be removed in the next version.
+     * ALL clients must convert to the new version format.
+     */
 
-    /** minor version number of the module */
-    uint16_t version_minor;
+    /**
+     * The API version of the HAL module interface. This is meant to
+     * version the hw_module_t, hw_module_methods_t, and hw_device_t
+     * structures and definitions.
+     *
+     * The HAL interface owns this field. Module users/implementations
+     * must NOT rely on this value for version information.
+     *
+     * Presently, 0 is the only valid value.
+     */
+    uint16_t hal_api_version;
+#define version_minor hal_api_version
 
     /** Identifier of module */
     const char *id;
@@ -88,7 +156,22 @@ typedef struct hw_device_t {
     /** tag must be initialized to HARDWARE_DEVICE_TAG */
     uint32_t tag;
 
-    /** version number for hw_device_t */
+    /**
+     * Version of the module-specific device API. This value is used by
+     * the derived-module user to manage different device implementations.
+     *
+     * The module user is responsible for checking the module_api_version
+     * and device version fields to ensure that the user is capable of
+     * communicating with the specific module implementation.
+     *
+     * One module can support multiple devices with different versions. This
+     * can be useful when a device interface changes in an incompatible way
+     * but it is still necessary to support older implementations at the same
+     * time. One such example is the Camera 2.0 API.
+     *
+     * This field is interpreted by the module user and is ignored by the
+     * HAL interface itself.
+     */
     uint32_t version;
 
     /** reference to the module this device belongs to */

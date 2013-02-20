@@ -76,6 +76,11 @@ typedef struct {
      * Set to 0 to disable the workaround, 1 to enable it.
      */
     uint8_t enable_i2c_workaround;
+    /* I2C slave address. Multiple I2C addresses are
+     * possible for PN544 module. Configure address according to
+     * board design.
+     */
+    uint8_t i2c_device_address;
 } nfc_pn544_device_t;
 
 static inline int nfc_pn544_open(const struct hw_module_t* module,

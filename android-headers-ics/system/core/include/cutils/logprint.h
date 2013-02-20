@@ -38,19 +38,14 @@ typedef enum {
     FORMAT_LONG,
 } AndroidLogPrintFormat;
 
-typedef enum {
-    OUTPUT_COLOR_ON = 0,
-    OUTPUT_COLOR_OFF,
-} AndroidLogColoredOutput;
-
 typedef struct AndroidLogFormat_t AndroidLogFormat;
 
 typedef struct AndroidLogEntry_t {
     time_t tv_sec;
     long tv_nsec;
     android_LogPriority priority;
-    pid_t pid;
-    pthread_t tid;
+    int32_t pid;
+    int32_t tid;
     const char * tag;
     size_t messageLen;
     const char * message;
@@ -62,8 +57,6 @@ void android_log_format_free(AndroidLogFormat *p_format);
 
 void android_log_setPrintFormat(AndroidLogFormat *p_format, 
         AndroidLogPrintFormat format);
-
-void android_log_setColoredOutput(AndroidLogFormat *p_format);
 
 /**
  * Returns FORMAT_OFF on invalid string

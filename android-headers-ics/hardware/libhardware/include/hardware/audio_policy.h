@@ -91,7 +91,7 @@ struct audio_policy {
                                        audio_policy_dev_state_t state,
                                        const char *device_address);
 
-    /* retreive a device connection status */
+    /* retrieve a device connection status */
     audio_policy_dev_state_t (*get_device_connection_state)(
                                             const struct audio_policy *pol,
                                             audio_devices_t device,
@@ -99,9 +99,9 @@ struct audio_policy {
 
     /* indicate a change in phone state. Valid phones states are defined
      * by audio_mode_t */
-    void (*set_phone_state)(struct audio_policy *pol, int state);
+    void (*set_phone_state)(struct audio_policy *pol, audio_mode_t state);
 
-    /* indicate a change in ringer mode */
+    /* deprecated, never called (was "indicate a change in ringer mode") */
     void (*set_ringer_mode)(struct audio_policy *pol, uint32_t mode,
                             uint32_t mask);
 
@@ -110,7 +110,7 @@ struct audio_policy {
                           audio_policy_force_use_t usage,
                           audio_policy_forced_cfg_t config);
 
-    /* retreive current device category forced for a given usage */
+    /* retrieve current device category forced for a given usage */
     audio_policy_forced_cfg_t (*get_force_use)(const struct audio_policy *pol,
                                                audio_policy_force_use_t usage);
 
@@ -126,14 +126,14 @@ struct audio_policy {
      * Audio routing query functions
      */
 
-    /* request an output appriate for playback of the supplied stream type and
+    /* request an output appropriate for playback of the supplied stream type and
      * parameters */
     audio_io_handle_t (*get_output)(struct audio_policy *pol,
                                     audio_stream_type_t stream,
                                     uint32_t samplingRate,
-                                    uint32_t format,
+                                    audio_format_t format,
                                     uint32_t channels,
-                                    audio_policy_output_flags_t flags);
+                                    audio_output_flags_t flags);
 
     /* indicates to the audio policy manager that the output starts being used
      * by corresponding stream. */
@@ -152,11 +152,11 @@ struct audio_policy {
     /* releases the output. */
     void (*release_output)(struct audio_policy *pol, audio_io_handle_t output);
 
-    /* request an input appriate for record from the supplied device with
+    /* request an input appropriate for record from the supplied device with
      * supplied parameters. */
-    audio_io_handle_t (*get_input)(struct audio_policy *pol, int inputSource,
+    audio_io_handle_t (*get_input)(struct audio_policy *pol, audio_source_t inputSource,
                                    uint32_t samplingRate,
-                                   uint32_t format,
+                                   audio_format_t format,
                                    uint32_t channels,
                                    audio_in_acoustics_t acoustics);
 
@@ -174,29 +174,43 @@ struct audio_policy {
      */
 
     /* initialises stream volume conversion parameters by specifying volume
-     * index range. */
+     * index range. The index range for each stream is defined by AudioService. */
     void (*init_stream_volume)(struct audio_policy *pol,
                                audio_stream_type_t stream,
                                int index_min,
                                int index_max);
 
     /* sets the new stream volume at a level corresponding to the supplied
-     * index */
+     * index. The index is within the range specified by init_stream_volume() */
     int (*set_stream_volume_index)(struct audio_policy *pol,
                                    audio_stream_type_t stream,
                                    int index);
 
-    /* retreive current volume index for the specified stream */
+    /* retrieve current volume index for the specified stream */
     int (*get_stream_volume_index)(const struct audio_policy *pol,
                                    audio_stream_type_t stream,
                                    int *index);
+
+    /* sets the new stream volume at a level corresponding to the supplied
+     * index for the specified device.
+     * The index is within the range specified by init_stream_volume() */
+    int (*set_stream_volume_index_for_device)(struct audio_policy *pol,
+                                   audio_stream_type_t stream,
+                                   int index,
+                                   audio_devices_t device);
+
+    /* retrieve current volume index for the specified stream for the specified device */
+    int (*get_stream_volume_index_for_device)(const struct audio_policy *pol,
+                                   audio_stream_type_t stream,
+                                   int *index,
+                                   audio_devices_t device);
 
     /* return the strategy corresponding to a given stream type */
     uint32_t (*get_strategy_for_stream)(const struct audio_policy *pol,
                                         audio_stream_type_t stream);
 
     /* return the enabled output devices for the given stream type */
-    uint32_t (*get_devices_for_stream)(const struct audio_policy *pol,
+    audio_devices_t (*get_devices_for_stream)(const struct audio_policy *pol,
                                        audio_stream_type_t stream);
 
     /* Audio effect management */
@@ -215,12 +229,16 @@ struct audio_policy {
     int (*set_effect_enabled)(struct audio_policy *pol, int id, bool enabled);
 
     bool (*is_stream_active)(const struct audio_policy *pol,
-                             int stream,
+                             audio_stream_type_t stream,
                              uint32_t in_past_ms);
 
     /* dump state */
     int (*dump)(const struct audio_policy *pol, int fd);
 };
+
+/* audio hw module handle used by load_hw_module(), open_output_on_module()
+ * and open_input_on_module() */
+typedef int audio_module_handle_t;
 
 struct audio_policy_service_ops {
     /*
@@ -240,12 +258,12 @@ struct audio_policy_service_ops {
      * suitable or not and act accordingly.
      */
     audio_io_handle_t (*open_output)(void *service,
-                                     uint32_t *pDevices,
+                                     audio_devices_t *pDevices,
                                      uint32_t *pSamplingRate,
-                                     uint32_t *pFormat,
-                                     uint32_t *pChannels,
+                                     audio_format_t *pFormat,
+                                     audio_channel_mask_t *pChannelMask,
                                      uint32_t *pLatencyMs,
-                                     audio_policy_output_flags_t flags);
+                                     audio_output_flags_t flags);
 
     /* creates a special output that is duplicated to the two outputs passed as
      * arguments. The duplication is performed by
@@ -275,11 +293,11 @@ struct audio_policy_service_ops {
 
     /* opens an audio input */
     audio_io_handle_t (*open_input)(void *service,
-                                    uint32_t *pDevices,
+                                    audio_devices_t *pDevices,
                                     uint32_t *pSamplingRate,
-                                    uint32_t *pFormat,
-                                    uint32_t *pChannels,
-                                    uint32_t acoustics);
+                                    audio_format_t *pFormat,
+                                    audio_channel_mask_t *pChannelMask,
+                                    audio_in_acoustics_t acoustics);
 
     /* closes an audio input */
     int (*close_input)(void *service, audio_io_handle_t input);
@@ -315,7 +333,7 @@ struct audio_policy_service_ops {
      * audio hardware interface to audio policy manager.
      *
      * Returns a pointer to a heap allocated string. The caller is responsible
-     * for freeing the memory for it.
+     * for freeing the memory for it using free().
      */
 
     char * (*get_parameters)(void *service, audio_io_handle_t io_handle,
@@ -341,6 +359,41 @@ struct audio_policy_service_ops {
                         int session,
                         audio_io_handle_t src_output,
                         audio_io_handle_t dst_output);
+
+    /* loads an audio hw module.
+     *
+     * The module name passed is the base name of the HW module library, e.g "primary" or "a2dp".
+     * The function returns a handle on the module that will be used to specify a particular
+     * module when calling open_output_on_module() or open_input_on_module()
+     */
+    audio_module_handle_t (*load_hw_module)(void *service,
+                                              const char *name);
+
+    /* Opens an audio output on a particular HW module.
+     *
+     * Same as open_output() but specifying a specific HW module on which the output must be opened.
+     */
+    audio_io_handle_t (*open_output_on_module)(void *service,
+                                     audio_module_handle_t module,
+                                     audio_devices_t *pDevices,
+                                     uint32_t *pSamplingRate,
+                                     audio_format_t *pFormat,
+                                     audio_channel_mask_t *pChannelMask,
+                                     uint32_t *pLatencyMs,
+                                     audio_output_flags_t flags);
+
+    /* Opens an audio input on a particular HW module.
+     *
+     * Same as open_input() but specifying a specific HW module on which the input must be opened.
+     * Also removed deprecated acoustics parameter
+     */
+    audio_io_handle_t (*open_input_on_module)(void *service,
+                                    audio_module_handle_t module,
+                                    audio_devices_t *pDevices,
+                                    uint32_t *pSamplingRate,
+                                    audio_format_t *pFormat,
+                                    audio_channel_mask_t *pChannelMask);
+
 };
 
 /**********************************************************************/
