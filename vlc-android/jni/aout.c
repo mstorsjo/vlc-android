@@ -40,6 +40,7 @@ typedef struct
     jobject j_libVlc;   /// Pointer to the LibVLC Java object
     jmethodID play;     /// Java method to play audio buffers
     jbyteArray buffer;  /// Raw audio data to be played
+    int channels;
 } aout_sys_t;
 
 /** Unique Java VM instance, as defined in libvlcjni.c */
@@ -76,8 +77,10 @@ int aout_open(void **opaque, char *format, unsigned *rate, unsigned *nb_channels
         goto error;
     }
 
-    LOGV ("Number of channels forced to 2, number of samples to %d", FRAME_SIZE);
-    *nb_channels = 2;
+    if (*nb_channels > 2)
+        *nb_channels = 2;
+    LOGV ("Number of channels forced to %d, number of samples to %d", *nb_channels, FRAME_SIZE);
+    p_sys->channels = *nb_channels;
 
     (*p_env)->CallVoidMethod (p_env, p_sys->j_libVlc, methodIdInitAout,
                               *rate, *nb_channels, FRAME_SIZE);
@@ -143,7 +146,7 @@ void aout_play(void *opaque, const void *samples, unsigned count, int64_t pts)
     (*myVm)->AttachCurrentThread (myVm, &p_env, NULL);
 
     (*p_env)->SetByteArrayRegion (p_env, p_sys->buffer, 0,
-                                  2 /*nb_channels*/ * count * sizeof (uint16_t),
+                                  p_sys->channels * count * sizeof (uint16_t),
                                   (jbyte*) samples);
     if ((*p_env)->ExceptionCheck (p_env))
     {
@@ -157,7 +160,7 @@ void aout_play(void *opaque, const void *samples, unsigned count, int64_t pts)
 
     (*p_env)->CallVoidMethod (p_env, p_sys->j_libVlc, p_sys->play,
                               p_sys->buffer,
-                              2 /*nb_channels*/ * count * sizeof (uint16_t),
+                              p_sys->channels * count * sizeof (uint16_t),
                               FRAME_SIZE);
     // FIXME: check for errors
 

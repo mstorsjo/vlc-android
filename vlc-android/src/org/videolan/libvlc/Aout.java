@@ -46,7 +46,7 @@ public class Aout {
                                                         AudioFormat.ENCODING_PCM_16BIT);
         mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
                                      sampleRateInHz,
-                                     AudioFormat.CHANNEL_OUT_STEREO,
+                                     channels == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
                                      AudioFormat.ENCODING_PCM_16BIT,
                                      Math.max(minBufferSize, channels * samples * 2),
                                      AudioTrack.MODE_STREAM);
