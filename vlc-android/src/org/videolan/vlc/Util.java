@@ -90,6 +90,7 @@ public class Util {
         instance.setTimeStretching(pref.getBoolean("enable_time_stretching_audio", false));
         instance.setChroma(pref.getString("chroma_format", ""));
         instance.setVerboseMode(pref.getBoolean("enable_verbose_mode", true));
+        instance.setForceMonoOutput(pref.getBoolean("force_mono_output", false));
 
         int aout;
         try {

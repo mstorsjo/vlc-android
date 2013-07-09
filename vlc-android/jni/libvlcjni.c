@@ -507,6 +507,12 @@ void Java_org_videolan_libvlc_LibVLC_nativeInit(JNIEnv *env, jobject thiz)
     methodId = (*env)->GetMethodID(env, cls, "isVerboseMode", "()Z");
     verbosity = (*env)->CallBooleanMethod(env, thiz, methodId);
 
+    methodId = (*env)->GetMethodID(env, cls, "forceMonoOutputEnabled", "()Z");
+    bool force_mono = (*env)->CallBooleanMethod(env, thiz, methodId);
+    char stereomodestr[2] = "0";
+    snprintf(stereomodestr, 2, "%d", force_mono ? 6 : 0);
+    LOGD("Using stereo-mode %s", stereomodestr);
+
     /* Don't add any invalid options, otherwise it causes LibVLC to crash */
     const char *argv[] = {
         "-I", "dummy",
@@ -517,6 +523,7 @@ void Java_org_videolan_libvlc_LibVLC_nativeInit(JNIEnv *env, jobject thiz)
         "--no-drop-late-frames",
         "--avcodec-fast",
         "--avcodec-threads=0",
+        "--stereo-mode", stereomodestr,
         "--subsdec-encoding", subsencodingstr,
         enable_time_stretch ? "--audio-time-stretch" : "--no-audio-time-stretch",
         "--avcodec-skiploopfilter", deblockstr,

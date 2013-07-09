@@ -206,7 +206,8 @@ public class PreferencesActivity extends PreferenceActivity implements OnSharedP
                 || key.equalsIgnoreCase("enable_time_stretching_audio")
                 || key.equalsIgnoreCase("deblocking")
                 || key.equalsIgnoreCase("chroma_format")
-                || key.equalsIgnoreCase("enable_verbose_mode")) {
+                || key.equalsIgnoreCase("enable_verbose_mode")
+                || key.equalsIgnoreCase("force_mono_output")) {
             Util.updateLibVlcSettings(sharedPreferences);
             LibVLC.restart(this);
         }

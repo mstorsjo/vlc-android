@@ -35,6 +35,11 @@
             android:key="enable_steal_remote_control"
             android:summary="@string/enable_steal_remote_control_summary"
             android:title="@string/enable_steal_remote_control" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="force_mono_output"
+            android:summary="@string/force_mono_output_summary"
+            android:title="@string/force_mono_output" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/performance_prefs_category" >

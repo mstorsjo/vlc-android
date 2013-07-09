@@ -61,6 +61,7 @@ public class LibVLC {
     private int deblocking = -1;
     private String chroma = "";
     private boolean verboseMode = true;
+    private boolean forceMonoOutput = false;
 
     /** Check in libVLC already initialized otherwise crash */
     private boolean mIsInitialized = false;
@@ -241,6 +242,14 @@ public class LibVLC {
 
     public void setVerboseMode(boolean verboseMode) {
         this.verboseMode = verboseMode;
+    }
+
+    public boolean forceMonoOutputEnabled() {
+        return forceMonoOutput;
+    }
+
+    public void setForceMonoOutput(boolean forceMonoOutput) {
+        this.forceMonoOutput = forceMonoOutput;
     }
 
     /**
