@@ -100,8 +100,10 @@ public class LibVLC {
                 System.loadLibrary("iomx-gingerbread");
             else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.HONEYCOMB_MR2)
                 System.loadLibrary("iomx-hc");
-            else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1)
+            else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
                 System.loadLibrary("iomx-ics");
+            else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1)
+                System.loadLibrary("iomx-jb");
             else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR2)
                 System.loadLibrary("iomx-jbmr2");
             else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT)

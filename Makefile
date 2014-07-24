@@ -12,7 +12,7 @@ LIBVLC_LIBS += libiomx-ics libiomx-hc libiomx-gingerbread
 
 # The following iomx libs are used for DEBUG only.
 # (after android Jelly Bean, we prefer to use MediaCodec instead of iomx)
-#LIBVLC_LIBS += libiomx-kk libiomx-jbmr2
+#LIBVLC_LIBS += libiomx-kk libiomx-jbmr2 libiomx-jb
 
 LIBVLCJNI= $(addprefix $(SRC)/obj/local/$(ARCH)/,$(addsuffix .so,$(LIBVLC_LIBS)))
 
